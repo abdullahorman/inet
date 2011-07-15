@@ -242,33 +242,25 @@ void EtherMAC::processFrameFromUpperLayer(EtherFrame *frame)
     {
         if (!isPauseFrame)
         {
-            if (txQueue.innerQueue->queueLimit
-                    && txQueue.innerQueue->queue.length() > txQueue.innerQueue->queueLimit)
-            {
+            if (txQueue.innerQueue->isFull())
                 error("txQueue length exceeds %d -- this is probably due to "
                       "a bogus app model generating excessive traffic "
                       "(or if this is normal, increase txQueueLimit!)",
-                      txQueue.innerQueue->queueLimit);
-            }
+                      txQueue.innerQueue->getQueueLimit());
 
             // store frame and possibly begin transmitting
             EV << "Packet " << frame << " arrived from higher layers, enqueueing\n";
-            txQueue.innerQueue->queue.insert(frame);
+            txQueue.innerQueue->insertDataFrame(frame);
         }
         else
         {
             EV << "PAUSE received from higher layer\n";
 
-            // PAUSE frames enjoy priority -- they're transmitted before all other frames queued up
-            if (!txQueue.innerQueue->queue.empty())
-                // front() frame is probably being transmitted
-                txQueue.innerQueue->queue.insertBefore(txQueue.innerQueue->queue.front(), frame);
-            else
-                txQueue.innerQueue->queue.insert(frame);
+            txQueue.innerQueue->insertControlFrame(frame);
         }
 
-        if (!curTxFrame && !txQueue.innerQueue->queue.empty())
-            curTxFrame = (EtherFrame*)txQueue.innerQueue->queue.pop();
+        if (!curTxFrame && !txQueue.innerQueue->empty())
+            curTxFrame = (EtherFrame*)txQueue.innerQueue->pop();
     }
 
     if ((duplexMode || receiveState == RX_IDLE_STATE) && transmitState == TX_IDLE_STATE)
@@ -669,7 +661,7 @@ void EtherMAC::printState()
     EV << ",  numConcurrentTransmissions: " << numConcurrentTransmissions;
 
     if (txQueue.innerQueue)
-        EV << ",  queueLength: " << txQueue.innerQueue->queue.length() << endl;
+        EV << ",  queueLength: " << txQueue.innerQueue->length() << endl;
 #undef CASE
 }
 

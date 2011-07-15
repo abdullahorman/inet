@@ -22,6 +22,7 @@
 #include "INETDefs.h"
 
 #include "INotifiable.h"
+#include "IPassiveQueue.h"
 #include "MACAddress.h"
 #include "TxNotifDetails.h"
 
@@ -29,7 +30,6 @@
 class EtherFrame;
 class EtherTraffic;
 class InterfaceEntry;
-class IPassiveQueue;
 class NotificationBoard;
 
 /**
@@ -83,11 +83,20 @@ class INET_API EtherMACBase : public cSimpleModule, public INotifiable, public c
 
     class InnerQueue
     {
-      public:
-        cQueue queue;
+      protected:
+        cQueue dataQueue;
+        cQueue controlQueue;
         int queueLimit;               // max queue length
 
-        InnerQueue(const char* name = NULL, int limit = 0) : queue(name), queueLimit(limit) {}
+      public:
+        InnerQueue(const char* name = NULL, int limit = 0) : dataQueue(name), controlQueue(name), queueLimit(limit) {}
+        void insertDataFrame(cObject *obj) { dataQueue.insert(obj); }
+        void insertControlFrame(cObject *obj) { controlQueue.insert(obj); }
+        cObject *pop() { return !controlQueue.empty() ? controlQueue.pop() : dataQueue.pop(); }
+        bool empty() const { return dataQueue.empty() && controlQueue.empty(); }
+        int getQueueLimit() const { return queueLimit; }
+        bool isFull() const { return queueLimit != 0 && dataQueue.length() > queueLimit; }
+        int length() const { return dataQueue.length() + controlQueue.length(); }
     };
 
     class MacQueue
@@ -96,15 +105,12 @@ class INET_API EtherMACBase : public cSimpleModule, public INotifiable, public c
         InnerQueue * innerQueue;
         IPassiveQueue *extQueue;
 
+      public:
         MacQueue() : innerQueue(NULL), extQueue(NULL) {};
-
         ~MacQueue() { delete innerQueue; };
-
-        bool isEmpty();
-
+        bool isEmpty() { return innerQueue ? innerQueue->empty() : extQueue->isEmpty(); }
         void setExternalQueue(IPassiveQueue *_extQueue)
                 { delete innerQueue; innerQueue = NULL; extQueue = _extQueue; };
-
         void setInternalQueue(const char* name = NULL, int limit = 0)
                 { delete innerQueue; innerQueue = new InnerQueue(name, limit); extQueue = NULL; };
     };
