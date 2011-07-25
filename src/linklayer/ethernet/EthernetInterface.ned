@@ -40,7 +40,7 @@ module EthernetInterface like IWiredNic
         string queueType = default("DropTailQueue"); // DropTailQueue, DropTailQoSQueue, REDQueue, NoQueue
         int numOutputHooks = default(0);
         int numInputHooks = default(0);
-        @display("i=block/ifcard;bgb=273,285;bgl=2");
+        @display("i=block/ifcard;bgb=302,307;bgl=2");
     gates:
         input netwIn;
         output netwOut;
@@ -48,27 +48,28 @@ module EthernetInterface like IWiredNic
     submodules:
         outputHook[numOutputHooks]: <default("Nop")> like IHook if numOutputHooks>0;
         inputHook[numInputHooks]: <default("Nop")> like IHook if numInputHooks>0;
-        queue: <queueType> like IOutputQueue {
+        queue: <queueType> like IOutputQueue if queueType != "NoQueue" {
             parameters:
-                @display("p=53,151;q=l2queue");
+                @display("p=53,196;q=l2queue");
         }
         mac: <macType> like IEtherMAC {
             parameters:
                 queueModule = (queueType == "NoQueue" ? "" : "queue");
                 txQueueLimit = (queueType == "NoQueue" ? 10000 : 1); // queue sends one packet at a time
-                @display("p=116,231");
+                @display("p=143,243");
         }
         encap: EtherEncap {
             parameters:
-                @display("p=116,151");
+                @display("p=143,151");
         }
     connections:
-        queue.out --> encap.upperLayerIn;
-        encap.lowerLayerOut --> mac.upperLayerIn;
+        encap.lowerLayerOut --> queue.in if queueType != "NoQueue";
+        queue.out --> mac.upperLayerIn if queueType != "NoQueue";
+        encap.lowerLayerOut --> mac.upperLayerIn if queueType == "NoQueue";
         encap.lowerLayerIn <-- mac.upperLayerOut;
         mac.phys <--> { @display("m=s"); } <--> phys;
 
-        netwIn --> { @display("m=n"); } --> queue.in if numOutputHooks == 0;
+        netwIn --> { @display("m=n"); } --> encap.upperLayerIn if numOutputHooks == 0;
         netwOut <-- { @display("m=n"); } <-- encap.upperLayerOut if numInputHooks == 0;
 
         encap.upperLayerOut --> inputHook[0].in if numInputHooks > 0;
@@ -81,5 +82,5 @@ module EthernetInterface like IWiredNic
         for i=0..numOutputHooks-2 {
             outputHook[i].out --> outputHook[i+1].in;
         }
-        outputHook[numOutputHooks-1].out --> queue.in if numOutputHooks > 0;
+        outputHook[numOutputHooks-1].out --> encap.upperLayerIn if numOutputHooks > 0;
 }
