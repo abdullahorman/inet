@@ -30,17 +30,15 @@ import inet.base.IHook;
 // Ethernet network interface. Complements ~EtherMAC and ~EtherEncap
 // with an output queue for QoS and RED support.
 //
-// @see EthernetInterface2, ~EthernetInterfaceNoQueue
-//
 module EthernetInterface like IWiredNic
 {
     parameters:
         bool csmacdSupport = default(false);  // by default no CSMA/CD so only only point-to-point duplex links are supported.
         string macType = default(csmacdSupport ? "EtherMAC" : "EtherMACFullDuplex"); // ~EtherMAC or ~EtherMACFullDuplex
-        string queueType = default("DropTailQueue"); // DropTailQueue, DropTailQoSQueue, REDQueue, NoQueue
+        string queueType = default("EthDropTailQoSQueue"); // ~DropTailQueue, ~DropTailQoSQueue, ~EthDropTailQoSQueue, ~REDQueue, ~NoQueue
         int numOutputHooks = default(0);
         int numInputHooks = default(0);
-        @display("i=block/ifcard;bgb=302,307;bgl=2");
+        @display("i=block/ifcard;bgl=2");
     gates:
         input netwIn;
         output netwOut;
