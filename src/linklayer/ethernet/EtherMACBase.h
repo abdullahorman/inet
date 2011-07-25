@@ -69,19 +69,16 @@ class INET_API EtherMACBase : public cSimpleModule, public INotifiable, public c
 
     enum
     {
-        NUM_OF_ETHERDESCRS = 4
+        NUM_OF_ETHERDESCRS = 6
     };
 
     struct EtherDescr
     {
-        double      txrate;
-        int         maxFramesInBurst;
-        int64       maxBytesInBurst;      // with IFG and external datas
-        int64       frameMinBytes;        // minimal frame length
-        int64       frameInBurstMinBytes; // minimal frame length in burst mode, after first frame
-        const_simtime_t   halfBitTime;          // transmission time of a half bit
-        const_simtime_t   slotTime;             // slot time
-        const_simtime_t   shortestFrameDuration; // precalculated from MIN_ETHERNET_FRAME or GIGABIT_MIN_FRAME_WITH_EXT
+        double        txrate;
+        unsigned int  maxFramesInBurst;
+        int64         maxBytesInBurst;      // with IFG and external datas
+        int64         frameMinBytes;        // minimal frame length
+        int64         frameInBurstMinBytes; // minimal frame length in burst mode, after first frame
     };
 
     class InnerQueue
@@ -118,6 +115,8 @@ class INET_API EtherMACBase : public cSimpleModule, public INotifiable, public c
     bool disabled;                  // true if the MAC is disabled, defined by the user
     bool promiscuous;               // if true, passes up all received frames
 
+    bool dataratesDiffer;         // true when tx rate and rx rate differ (configuration error, or between datarate change of tx/rx channels)
+
     // MAC operation modes and parameters
     bool duplexMode;                // channel connecting to MAC is full duplex, i.e. like a switch with 2 half-duplex lines
     bool carrierExtension;          // carrier extension on/off (Gigabit Ethernet)
@@ -135,7 +134,7 @@ class INET_API EtherMACBase : public cSimpleModule, public INotifiable, public c
     static const EtherDescr etherDescrs[NUM_OF_ETHERDESCRS];
     static const EtherDescr nullEtherDescr;
 
-    const EtherDescr *curEtherDescr;    // Current Ethernet Constants (eg txrate, ...)
+    EtherDescr curEtherDescr;    // Current Ethernet Constants (eg txrate, ...)
 
     cChannel *transmissionChannel;  // transmission channel
 
@@ -157,8 +156,6 @@ class INET_API EtherMACBase : public cSimpleModule, public INotifiable, public c
     cMessage *endTxMsg, *endIFGMsg, *endPauseMsg;
 
     // statistics
-    int  framesSentInBurst;            // Number of frames send out in current frame burst
-    int  bytesSentInBurst;             // Number of bytes transmitted in current frame burst
     unsigned long numFramesSent;
     unsigned long numFramesReceivedOK;
     unsigned long numBytesSent;        // includes Ethernet frame bytes with preamble
@@ -195,7 +192,7 @@ class INET_API EtherMACBase : public cSimpleModule, public INotifiable, public c
 
     virtual MACAddress getMACAddress() {return address;}
 
-    double getTxRate() { return curEtherDescr->txrate; }
+    double getTxRate() { return curEtherDescr.txrate; }
     bool isActive() { return connected && !disabled; }
 
   protected:
@@ -209,16 +206,26 @@ class INET_API EtherMACBase : public cSimpleModule, public INotifiable, public c
     virtual void registerInterface();
 
     // helpers
+    /** Checks destination address and drop frame when not came for me */
     virtual bool checkDestinationAddress(EtherFrame *frame);
-    virtual void calculateParameters();
+
+    /**
+     * Calculates datarates, etc. Verify the same settings on in/out channels, and throw error
+     * when differs and the parameter errorWhenAsymmetric is true.
+     */
+    virtual void calculateParameters(bool errorWhenAsymmetric);
+
     virtual void printParameters();
 
     // finish
     virtual void finish();
 
+    // event handlers
+
     // helpers
     virtual void fireChangeNotification(int type, cPacket *msg);
     virtual void getNextFrameFromQueue();
+    virtual void ifDown();
 
     // display
     virtual void updateDisplayString();
@@ -230,7 +237,7 @@ class INET_API EtherMACBase : public cSimpleModule, public INotifiable, public c
 
     // model change related functions
     virtual void receiveSignal(cComponent *src, simsignal_t id, cObject *obj);
-    virtual void refreshConnection(bool connected);
+    virtual void refreshConnection();
 };
 
 #endif

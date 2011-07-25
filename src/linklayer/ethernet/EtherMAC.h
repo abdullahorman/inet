@@ -53,46 +53,51 @@ class INET_API EtherMAC : public EtherMACBase
     // statistics
     simtime_t totalCollisionTime;      // total duration of collisions on channel
     simtime_t totalSuccessfulRxTxTime; // total duration of successful transmissions on channel
-    simtime_t channelBusySince;  // needed for computing totalCollisionTime/totalSuccessfulRxTxTime
+    simtime_t channelBusySince;        // needed for computing totalCollisionTime/totalSuccessfulRxTxTime
     unsigned long numCollisions;       // collisions (NOT number of collided frames!) sensed
     unsigned long numBackoffs;         // number of retransmissions
+    unsigned int  framesSentInBurst;   // Number of frames send out in current frame burst
+    long bytesSentInBurst;             // Number of bytes transmitted in current frame burst
+    simtime_t slotTime;                // slot time for half-duplex mode
+
     static simsignal_t collisionSignal;
     static simsignal_t backoffSignal;
 
+    // helpers
+
     // event handlers
-    virtual void processFrameFromUpperLayer(EtherFrame *msg);
-    virtual void processMsgFromNetwork(EtherTraffic *msg);
-    virtual void processMessageWhenNotConnected(cMessage *msg);
-    virtual void processMessageWhenDisabled(cMessage *msg);
-    virtual void processPauseCommand(int pauseUnits);
+    virtual void handleSelfMessage(cMessage *msg);
     virtual void handleEndIFGPeriod();
     virtual void handleEndPausePeriod();
     virtual void handleEndTxPeriod();
     virtual void handleEndRxPeriod();
     virtual void handleEndBackoffPeriod();
     virtual void handleEndJammingPeriod();
+    virtual void handleRetransmission();
+
+    // helpers
+    virtual void calculateParameters(bool errorWhenAsymmetric);
+    virtual void processFrameFromUpperLayer(EtherFrame *msg);
+    virtual void processMsgFromNetwork(EtherTraffic *msg);
+    virtual void processMessageWhenNotConnected(cMessage *msg);
+    virtual void processMessageWhenDisabled(cMessage *msg);
     virtual void scheduleEndIFGPeriod();
-    virtual void scheduleEndTxPeriod(cPacket *);
+    virtual void scheduleEndTxPeriod(EtherFrame *);
+    virtual void scheduleEndRxPeriod(EtherTraffic *);
     virtual void scheduleEndPausePeriod(int pauseUnits);
     virtual bool checkAndScheduleEndPausePeriod();
     virtual void beginSendFrames();
+    virtual void sendJamSignal();
+    virtual void startFrameTransmission();
+    virtual void frameReceptionComplete(EtherTraffic *frame);
+    virtual void processReceivedDataFrame(EtherFrame *frame);
+    virtual void processPauseCommand(int pauseUnits);
+    virtual void ifDown();
 
     virtual void printState();
 
-    // helpers
-    virtual void scheduleEndRxPeriod(cPacket *);
-    virtual void sendJamSignal();
-    virtual void handleRetransmission();
-    virtual void startFrameTransmission();
-    virtual void frameReceptionComplete(EtherTraffic *frame);
-    virtual void prepareTxFrame(EtherFrame *frame);
-    virtual void processReceivedDataFrame(EtherFrame *frame);
-
     // notifications
     virtual void updateHasSubcribers();
-
-    // model change related functions
-    virtual void refreshConnection(bool connected);
 };
 
 #endif

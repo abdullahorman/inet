@@ -73,6 +73,12 @@ void EtherMAC::initializeStatistics()
 {
     EtherMACBase::initializeStatistics();
 
+    framesSentInBurst = 0;
+    bytesSentInBurst = 0;
+
+    WATCH(framesSentInBurst);
+    WATCH(bytesSentInBurst);
+
     // initialize statistics
     totalCollisionTime = 0.0;
     totalSuccessfulRxTxTime = 0.0;
@@ -90,39 +96,57 @@ void EtherMAC::initializeFlags()
     EtherMACBase::initializeFlags();
 
     duplexMode = par("duplexEnabled");
+    frameBursting = !duplexMode && par("frameBursting").boolValue();
     physInGate->setDeliverOnReceptionStart(true);
 }
 
-void EtherMAC::handleMessage(cMessage *msg)
+void EtherMAC::ifDown()
 {
-    printState();
+    delete frameBeingReceived;
+    frameBeingReceived = NULL;
+    cancelEvent(endRxMsg);
+    cancelEvent(endBackoffMsg);
+    cancelEvent(endJammingMsg);
+    bytesSentInBurst = 0;
+    framesSentInBurst = 0;
 
-    // some consistency check
-    if (!duplexMode && transmitState == TRANSMITTING_STATE && receiveState != RX_IDLE_STATE)
-        error("Inconsistent state -- transmitting and receiving at the same time");
+    EtherMACBase::ifDown();
+}
 
-    if (!msg->isSelfMessage())
+void EtherMAC::calculateParameters(bool errorWhenAsymmetric)
+{
+    EtherMACBase::calculateParameters(errorWhenAsymmetric);
+
+    if (!duplexMode)
     {
-        // either frame from upper layer, or frame/jam signal from the network
-        if (!connected)
-            processMessageWhenNotConnected(msg);
-        else if (disabled)
-            processMessageWhenDisabled(msg);
-        else if (msg->getArrivalGate() == gate("upperLayerIn"))
-            processFrameFromUpperLayer(check_and_cast<EtherFrame *>(msg));
-        else
-            processMsgFromNetwork(check_and_cast<EtherTraffic *>(msg));
+        if (curEtherDescr.txrate >= FAST_GIGABIT_ETHERNET_TXRATE)
+            error("The fast gigabit ethernet supports only the full duplex connections");
+
+        if (curEtherDescr.txrate == GIGABIT_ETHERNET_TXRATE)
+        {
+            carrierExtension = par("carrierExtension").boolValue();
+            curEtherDescr.frameMinBytes = carrierExtension ? GIGABIT_MIN_FRAME_WITH_EXT : MIN_ETHERNET_FRAME;
+            EV << "Half duplex Gigabit Ethernet, carrier extension "
+               << (carrierExtension ? "enabled" : "disabled") << endl;
+        }
+        slotTime = ((curEtherDescr.txrate >= GIGABIT_ETHERNET_TXRATE) ? 4096 : 512 ) / curEtherDescr.txrate;
     }
     else
     {
-        // Process different self-messages (timer signals)
-        EV << "Self-message " << msg << " received\n";
+        slotTime = 0.0;
+    }
+}
 
-        switch (msg->getKind())
-        {
-            case ENDIFG:
-                handleEndIFGPeriod();
-                break;
+void EtherMAC::handleSelfMessage(cMessage *msg)
+{
+    // Process different self-messages (timer signals)
+    EV << "Self-message " << msg << " received\n";
+
+    switch (msg->getKind())
+    {
+        case ENDIFG:
+            handleEndIFGPeriod();
+            break;
 
             case ENDTRANSMISSION:
                 handleEndTxPeriod();
@@ -148,12 +172,36 @@ void EtherMAC::handleMessage(cMessage *msg)
                 error("self-message with unexpected message kind %d", msg->getKind());
         }
     }
+
+void EtherMAC::handleMessage(cMessage *msg)
+{
+    if (dataratesDiffer)
+        calculateParameters(true);
+
     printState();
+
+    // some consistency check
+    if (!duplexMode && transmitState == TRANSMITTING_STATE && receiveState != RX_IDLE_STATE)
+        error("Inconsistent state -- transmitting and receiving at the same time");
+
+    if (msg->isSelfMessage())
+        handleSelfMessage(msg);
+    else if (!connected)
+        processMessageWhenNotConnected(msg);
+    else if (disabled)
+        processMessageWhenDisabled(msg);
+    else if (msg->getArrivalGate() == gate("upperLayerIn"))
+        processFrameFromUpperLayer(check_and_cast<EtherFrame *>(msg));
+    else if (msg->getArrivalGate() == gate("phys$i"))
+        processMsgFromNetwork(check_and_cast<EtherTraffic *>(msg));
+    else
+        throw cRuntimeError(this, "Message received from unknown gate!");
 
     if (ev.isGUI())
         updateDisplayString();
-}
 
+    printState();
+}
 
 void EtherMAC::processFrameFromUpperLayer(EtherFrame *frame)
 {
@@ -219,7 +267,7 @@ void EtherMAC::processFrameFromUpperLayer(EtherFrame *frame)
                 txQueue.innerQueue->queue.insert(frame);
         }
 
-        if (NULL == curTxFrame && !txQueue.innerQueue->queue.empty())
+        if (!curTxFrame && !txQueue.innerQueue->queue.empty())
             curTxFrame = (EtherFrame*)txQueue.innerQueue->queue.pop();
     }
 
@@ -238,7 +286,7 @@ void EtherMAC::processMsgFromNetwork(EtherTraffic *msg)
     // detect cable length violation in half-duplex mode
     if (!duplexMode)
     {
-        if (simTime() - msg->getSendingTime() >= curEtherDescr->shortestFrameDuration)
+        if (simTime() - msg->getSendingTime() >= curEtherDescr.frameMinBytes / curEtherDescr.txrate)
         {
             error("very long frame propagation time detected, "
                   "maybe cable exceeds maximum allowed length? "
@@ -294,7 +342,7 @@ void EtherMAC::processMsgFromNetwork(EtherTraffic *msg)
     }
     else if (receiveState == RECEIVING_STATE
             && dynamic_cast<EtherJam*>(msg) == NULL
-            && endRxMsg->getArrivalTime() - simTime() < curEtherDescr->halfBitTime)
+            && endRxMsg->getArrivalTime() - simTime() < 0.5 / curEtherDescr.txrate)
     {
         // With the above condition we filter out "false" collisions that may occur with
         // back-to-back frames. That is: when "beginning of frame" message (this one) occurs
@@ -369,7 +417,6 @@ void EtherMAC::processMsgFromNetwork(EtherTraffic *msg)
     }
 }
 
-
 void EtherMAC::handleEndIFGPeriod()
 {
     if (transmitState != WAIT_IFG_STATE && transmitState != SEND_IFG_STATE)
@@ -380,13 +427,6 @@ void EtherMAC::handleEndIFGPeriod()
 
     // End of IFG period, okay to transmit, if Rx idle OR duplexMode
     EV << "IFG elapsed, now begin transmission of frame " << curTxFrame << endl;
-
-    // Perform carrier extension if in Gigabit Ethernet
-    if (carrierExtension && curTxFrame->getByteLength() < GIGABIT_MIN_FRAME_WITH_EXT)
-    {
-        EV << "Performing carrier extension of small frame\n";
-        curTxFrame->setByteLength(GIGABIT_MIN_FRAME_WITH_EXT);
-    }
 
     // End of IFG period, okay to transmit, if Rx idle OR duplexMode
 
@@ -400,7 +440,18 @@ void EtherMAC::startFrameTransmission()
 
     EtherFrame *frame = curTxFrame->dup();
 
-    prepareTxFrame(frame);
+    if (frame->getSrc().isUnspecified())
+        frame->setSrc(address);
+
+    frame->setOrigByteLength(frame->getByteLength());
+    bool inBurst = frameBursting && framesSentInBurst;
+    int64 minFrameLength = inBurst ? curEtherDescr.frameInBurstMinBytes : curEtherDescr.frameMinBytes;
+
+    if (frame->getByteLength() < minFrameLength)
+        frame->setByteLength(minFrameLength);
+
+    // add preamble and SFD (Starting Frame Delimiter), then send out
+    frame->addByteLength(PREAMBLE_BYTES+SFD_BYTES);
 
     if (ev.isGUI())
         updateConnectionColor(TRANSMITTING_STATE);
@@ -582,9 +633,8 @@ void EtherMAC::handleRetransmission()
     EV << "Executing backoff procedure\n";
     int backoffrange = (backoffs >= BACKOFF_RANGE_LIMIT) ? 1024 : (1 << backoffs);
     int slotNumber = intuniform(0, backoffrange-1);
-    simtime_t backofftime = slotNumber * curEtherDescr->slotTime;
 
-    scheduleAt(simTime() + backofftime, endBackoffMsg);
+    scheduleAt(simTime() + slotNumber * slotTime, endBackoffMsg);
     transmitState = BACKOFF_STATE;
 
     numBackoffs++;
@@ -636,22 +686,6 @@ void EtherMAC::finish()
     recordScalar("backoffs",       numBackoffs);
 }
 
-void EtherMAC::refreshConnection(bool connected_par)
-{
-    Enter_Method_Silent();
-
-    EtherMACBase::refreshConnection(connected_par);
-
-    if (!connected)
-    {
-        delete frameBeingReceived;
-        frameBeingReceived = NULL;
-        cancelEvent(endRxMsg);
-        cancelEvent(endBackoffMsg);
-        cancelEvent(endJammingMsg);
-    }
-}
-
 void EtherMAC::updateHasSubcribers()
 {
     hasSubscribers = false;  // currently we don't fire any notifications
@@ -694,12 +728,9 @@ void EtherMAC::handleEndPausePeriod()
 
 void EtherMAC::frameReceptionComplete(EtherTraffic *frame)
 {
-    int pauseUnits;
-    EtherPauseFrame *pauseFrame;
-
-    if ((pauseFrame = dynamic_cast<EtherPauseFrame*>(frame)) != NULL)
+    if (dynamic_cast<EtherPauseFrame*>(frame) != NULL)
     {
-        pauseUnits = pauseFrame->getPauseTime();
+        int pauseUnits = ((EtherPauseFrame*)frame)->getPauseTime();
         delete frame;
         numPauseFramesRcvd++;
         emit(rxPausePkUnitsSignal, pauseUnits);
@@ -712,24 +743,6 @@ void EtherMAC::frameReceptionComplete(EtherTraffic *frame)
     else
     {
         processReceivedDataFrame((EtherFrame *)frame);
-    }
-}
-
-void EtherMAC::prepareTxFrame(EtherFrame *frame)
-{
-    if (frame->getSrc().isUnspecified())
-        frame->setSrc(address);
-
-    // add preamble and SFD (Starting Frame Delimiter), then send out
-    frame->setOrigByteLength(frame->getByteLength());
-    frame->addByteLength(PREAMBLE_BYTES+SFD_BYTES);
-    bool inBurst = frameBursting && framesSentInBurst;
-    int64 minFrameLength =
-            inBurst ? curEtherDescr->frameInBurstMinBytes : curEtherDescr->frameMinBytes;
-
-    if (frame->getByteLength() < minFrameLength)
-    {
-        frame->setByteLength(minFrameLength);
     }
 }
 
@@ -759,8 +772,6 @@ void EtherMAC::processReceivedDataFrame(EtherFrame *frame)
         return;
 
     numFramesPassedToHL++;
-    emit(passedUpPkBytesSignal, curBytes);
-
     emit(packetSentToUpperSignal, frame);
     // pass up to upper layer
     send(frame, "upperLayerOut");
@@ -798,9 +809,10 @@ void EtherMAC::scheduleEndIFGPeriod()
 
     if (frameBursting
             && (simTime() == lastTxFinishTime)
-            && (framesSentInBurst < curEtherDescr->maxFramesInBurst)
+            && (framesSentInBurst > 0)
+            && (framesSentInBurst < curEtherDescr.maxFramesInBurst)
             && (bytesSentInBurst + (INTERFRAME_GAP_BITS / 8) + curTxFrame->getByteLength()
-                    <= curEtherDescr->maxBytesInBurst)
+                    <= curEtherDescr.maxBytesInBurst)
        )
     {
         EtherPadding *gap = new EtherPadding("IFG");
@@ -822,7 +834,7 @@ void EtherMAC::scheduleEndIFGPeriod()
     }
 }
 
-void EtherMAC::scheduleEndTxPeriod(cPacket *frame)
+void EtherMAC::scheduleEndTxPeriod(EtherFrame *frame)
 {
     // update burst variables
     if (frameBursting)
