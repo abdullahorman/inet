@@ -165,3 +165,4 @@ void EtherEncap::handleSendPause(cMessage *msg)
 void EtherEncap::finish()
 {
 }
+
