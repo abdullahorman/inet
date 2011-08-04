@@ -317,7 +317,7 @@ void MACRelayUnitBase::sendPauseFrame(int portno, int pauseUnits)
     if (destModule->isActive())
     {
         send(frame, gate);
-        pauseFinished[portno] = simTime() + 512.0 * pauseUnits / destModule->getTxRate();
+        pauseFinished[portno] = simTime() + ((double)PAUSE_UNIT_BITS) * pauseUnits / destModule->getTxRate();
     }
     else //disconnected or disabled
         pauseFinished[portno] = SIMTIME_ZERO;
