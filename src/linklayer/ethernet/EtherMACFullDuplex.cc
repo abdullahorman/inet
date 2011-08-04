@@ -181,7 +181,7 @@ void EtherMACFullDuplex::processMsgFromNetwork(EtherTraffic *msg)
 {
     EV << "Received frame from network: " << msg << endl;
 
-    if (dynamic_cast<EtherPadding *>(msg))
+    if (dynamic_cast<EtherIFG *>(msg))
     {
         delete msg;
         return;
@@ -370,8 +370,7 @@ void EtherMACFullDuplex::scheduleEndIFGPeriod()
 {
     ASSERT(curTxFrame);
 
-    EtherPadding gap;
-    gap.setBitLength(INTERFRAME_GAP_BITS);
+    EtherIFG gap;
     transmitState = WAIT_IFG_STATE;
     scheduleAt(simTime() + transmissionChannel->calculateDuration(&gap), endIFGMsg);
 }

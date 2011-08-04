@@ -757,7 +757,7 @@ void EtherMAC::frameReceptionComplete()
     EtherTraffic *frame = frameBeingReceived;
     frameBeingReceived = NULL;
 
-    if ((dynamic_cast<EtherPadding*>(frame)) != NULL)
+    if ((dynamic_cast<EtherIFG*>(frame)) != NULL)
     {
         delete frame;
         return;
@@ -846,8 +846,7 @@ void EtherMAC::scheduleEndIFGPeriod()
                     <= curEtherDescr.maxBytesInBurst)
        )
     {
-        EtherPadding *gap = new EtherPadding("IFG");
-        gap->setBitLength(INTERFRAME_GAP_BITS);
+        EtherIFG *gap = new EtherIFG("IFG");
         bytesSentInBurst += gap->getByteLength();
         currentSendPkTreeID = gap->getTreeId();
         send(gap, physOutGate);
@@ -857,8 +856,7 @@ void EtherMAC::scheduleEndIFGPeriod()
     }
     else
     {
-        EtherPadding gap;
-        gap.setBitLength(INTERFRAME_GAP_BITS);
+        EtherIFG gap;
         bytesSentInBurst = 0;
         framesSentInBurst = 0;
         transmitState = WAIT_IFG_STATE;
