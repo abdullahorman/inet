@@ -183,7 +183,3 @@ void EtherEncap::handleSendPause(cMessage *msg)
     totalPauseSent++;
 }
 
-void EtherEncap::finish()
-{
-}
-
