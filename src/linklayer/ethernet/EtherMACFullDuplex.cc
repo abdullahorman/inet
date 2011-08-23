@@ -283,11 +283,7 @@ void EtherMACFullDuplex::processMessageWhenNotConnected(cMessage *msg)
     numDroppedIfaceDown++;
     delete msg;
 
-    if (txQueue.extQueue)
-    {
-        if (0 == txQueue.extQueue->getNumPendingRequests())
-            txQueue.extQueue->requestPacket();
-    }
+    requestNextFrameFromExtQueue();
 }
 
 void EtherMACFullDuplex::processMessageWhenDisabled(cMessage *msg)
@@ -295,11 +291,7 @@ void EtherMACFullDuplex::processMessageWhenDisabled(cMessage *msg)
     EV << "MAC is disabled -- dropping message " << msg << endl;
     delete msg;
 
-    if (txQueue.extQueue)
-    {
-        if (0 == txQueue.extQueue->getNumPendingRequests())
-            txQueue.extQueue->requestPacket();
-    }
+    requestNextFrameFromExtQueue();
 }
 
 void EtherMACFullDuplex::handleEndPausePeriod()
