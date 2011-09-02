@@ -1,3 +1,5 @@
+TODO: TCPSocket::readDataTransferModePar(): revise!
+
 TODO: statisztikakat rendberakni (packetek szamat ne a "pkBytes:count" gyujtse! pkBytes gyakorlatilag NAGYON RITKAN kell)
 TODO: elnevezesi konvencio: "Addr" helyett "Address" legyen mindenhol (msg, cc/h, ned)
 TODO: packetekben a port legyen uint8_t, etc! (control infoban ok az "int", ha a -1 is elfogadhato ertek)
