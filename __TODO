@@ -1,3 +1,7 @@
+TODO: Int128/Uint128 code revision / optimisation
+      Remove for-cycles at generating masks in shift functions.
+      Optimise *= and other operators/functions.
+
 TODO: IPv4 misfeature: in IPv4::handleMessageFromHL(cPacket *msg), if the packet is already
       an IP datagram, then it does not encapsulate the packet but just routes it!
       Problem: HL cannot control whether it wants IP to route the packet or tunnel (encapsulate) it!!

@@ -416,7 +416,7 @@ Uint128 & Uint128::operator>>=(unsigned int n) throw ()
 
         // get lower N bits of high qword
         uint64_t mask = 0ull;
-        for (unsigned int i = 0; i < n; ++i) mask |= (1 << i);
+        for (unsigned int i = 0; i < n; ++i) mask |= (1ull << i);
 
         // and add them to low qword
         this->lo |= (this->hi & mask) << (64 - n);
@@ -446,7 +446,7 @@ Uint128 & Uint128::operator<<=(unsigned int n) throw ()
 
         // get higher N bits of low qword
         uint64_t mask = 0ull;
-        for (unsigned int i = 0; i < n; ++i) mask |= (1 << (63 - i));
+        for (unsigned int i = 0; i < n; ++i) mask |= (1ull << (63 - i));
 
         // and add them to high qword
         this->hi |= (this->lo & mask) >> (64 - n);
