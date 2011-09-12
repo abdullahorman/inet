@@ -1,3 +1,9 @@
+TODO: TCP,UDP,SCTP: Need revision for PORT_ANY usage:
+      What will the PORT_ANY value: -1 or 0.
+      Where do replace from PORT_ANY to a valid port: in TCPSocket or in
+          TCPConnection::process_OPEN_ACTIVE/process_OPEN_PASSIVE
+      Check it in other protocols.
+
 TODO: Int128/Uint128 code revision / optimisation
       Remove for-cycles at generating masks in shift functions.
       Optimise *= and other operators/functions.
