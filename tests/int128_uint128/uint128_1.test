@@ -1,0 +1,50 @@
+%description:
+Test Uint128 class
+
+%includes:
+#include "uint128.h"
+
+%global:
+
+static void compare(Uint128 a, Uint128 b)
+{
+    if (a != b)
+        ev << "(a=" << a.toLongDouble() << "), (b=" << b.toLongDouble() << ")\n";
+    if (a == b)
+        ev << "a == b\n";
+    if (a < b)
+        ev << "a < b\n";
+    if (a > b)
+        ev << "a > b\n";
+}
+
+%activity:
+
+ev << "BEGIN\n";
+compare(-Uint128(0u), Uint128(0u));
+compare(Uint128(9u)*Uint128(7u), Uint128(63u));
+compare((Uint128(9u))*(Uint128(7u)<<64u), Uint128(63u)<<64u);
+compare((Uint128(9u)<<64u)*(Uint128(7u)), Uint128(63u)<<64u);
+compare((Uint128(9u)<<32u)*(Uint128(7u)<<32u), Uint128(63u)<<64u);
+compare((Uint128(9u)<<62u)*(Uint128(7u)), Uint128(63u)<<62u);
+compare((Uint128(9u))*(Uint128(7u)<<62u), Uint128(63u)<<62u);
+compare(-(Uint128(1)<<64u), (-Uint128(1))<<64u);
+compare((-(Uint128(12342)<<64u)) + (Uint128(12342)<<64u), Uint128(0));
+compare(Uint128(1534) * Uint128(323412341l) / Uint128(1534), Uint128(323412341l));
+compare(Uint128(65536) * Uint128(65536) * Uint128(65536) * Uint128(65536), Uint128(1)<<64u);
+ev << "END\n";
+
+%contains: stdout
+BEGIN
+a == b
+a == b
+a == b
+a == b
+a == b
+a == b
+a == b
+a == b
+a == b
+a == b
+a == b
+END
