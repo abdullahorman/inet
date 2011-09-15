@@ -6,47 +6,45 @@ Test int128 class
 
 %global:
 
-static void compare(int128 a, int128 b)
+static void compare(int128 a, int128 b, const char *str)
 {
     if (a != b)
-        ev << "(a=" << a.toLongDouble() << "), (b=" << b.toLongDouble() << ")\n";
-    if (a == b)
-        ev << "a == b\n";
+        ev << str << ": a != b" << "\n  (a=" << std::string(a.toString()) << "=" << std::string(a.toString(16)) << "H),"
+           << " (b=" << std::string(b.toString()) << "=" << std::string(b.toString(16)) << "H)\n";
     if (a < b)
-        ev << "a < b\n";
+        ev << "  a < b\n";
     if (a > b)
-        ev << "a > b\n";
+        ev << "  a > b\n";
 }
 
 %activity:
 
 ev << "BEGIN\n";
-compare(-int128(0u), int128(0u));
-compare(int128(9u)*int128(7u), int128(63));
-compare((int128(9u))*(int128(7u)<<64u), int128(63u)<<64u);
-compare((int128(9u)<<32u)*(int128(7u)<<32u), int128(63u)<<64u);
-compare((int128(9u)<<64u)*(int128(7u)), int128(63u)<<64u);
-compare((int128(9u)<<62u)*(int128(7u)), int128(63u)<<62u);
-compare((int128(9u))*(int128(7u)<<62u), int128(63u)<<62u);
-compare(-int128(5), int128(-5));
-compare(-(int128(1)<<64u), (-int128(1))<<64u);
-compare((-(int128(12342)<<64u)) + (int128(12342)<<64u), int128(0));
-compare(int128(1534) * int128(323412341l) / int128(1534), int128(323412341l));
-compare(int128(65536) * int128(65536) * int128(65536) * int128(65536), int128(1)<<64u);
+
+#define COMPARE(x,y)  compare( (x), (y), "compare(" #x ", " #y ")" )
+
+COMPARE(-int128(0), int128(0));
+COMPARE(int128(9)*int128(7), int128(63));
+COMPARE((int128(9))*(int128(7)<<64u), int128(63)<<64u);
+COMPARE((int128(9)<<32u)*(int128(7)<<32u), int128(63)<<64u);
+COMPARE((int128(9)<<64u)*(int128(7)), int128(63)<<64u);
+COMPARE((int128(9)<<62u)*(int128(7)), int128(63)<<62u);
+COMPARE((int128(9))*(int128(7)<<62u), int128(63)<<62u);
+COMPARE((int128(-9))*(int128(7)<<64u), int128(-63)<<64u);
+COMPARE((int128(-9)<<32u)*(int128(7)<<32u), int128(-63)<<64u);
+COMPARE((int128(-9)<<64u)*(int128(7)), int128(-63)<<64u);
+COMPARE((int128(-9)<<62u)*(int128(7)), int128(-63)<<62u);
+COMPARE((int128(-9))*(int128(7)<<62u), int128(-63)<<62u);
+COMPARE(-int128(5), int128(-5));
+COMPARE(-(int128(1)<<64u), (-int128(1))<<64u);
+COMPARE((-(int128(12342)<<64u)) + (int128(12342)<<64u), int128(0));
+COMPARE(int128(1534) * int128(323412341l) / int128(1534), int128(323412341l));
+COMPARE(int128(65536) * int128(65536) * int128(65536) * int128(65536), int128(1)<<64u);
+
+#undef COMPARE
+
 ev << "END\n";
 
 %contains: stdout
 BEGIN
-a == b
-a == b
-a == b
-a == b
-a == b
-a == b
-a == b
-a == b
-a == b
-a == b
-a == b
-a == b
 END

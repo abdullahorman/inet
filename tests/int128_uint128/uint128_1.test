@@ -6,45 +6,39 @@ Test Uint128 class
 
 %global:
 
-static void compare(Uint128 a, Uint128 b)
+static void compare(Uint128 a, Uint128 b, const char *str)
 {
     if (a != b)
-        ev << "(a=" << a.toLongDouble() << "), (b=" << b.toLongDouble() << ")\n";
-    if (a == b)
-        ev << "a == b\n";
+        ev << str << ": a != b" << "\n  (a=" << std::string(a.toString()) << "=" << std::string(a.toString(16)) << "H),"
+           << " (b=" << std::string(b.toString()) << "=" << std::string(b.toString(16)) << "H)\n";
     if (a < b)
-        ev << "a < b\n";
+        ev << "  a < b\n";
     if (a > b)
-        ev << "a > b\n";
+        ev << "  a > b\n";
 }
 
 %activity:
 
 ev << "BEGIN\n";
-compare(-Uint128(0u), Uint128(0u));
-compare(Uint128(9u)*Uint128(7u), Uint128(63u));
-compare((Uint128(9u))*(Uint128(7u)<<64u), Uint128(63u)<<64u);
-compare((Uint128(9u)<<64u)*(Uint128(7u)), Uint128(63u)<<64u);
-compare((Uint128(9u)<<32u)*(Uint128(7u)<<32u), Uint128(63u)<<64u);
-compare((Uint128(9u)<<62u)*(Uint128(7u)), Uint128(63u)<<62u);
-compare((Uint128(9u))*(Uint128(7u)<<62u), Uint128(63u)<<62u);
-compare(-(Uint128(1)<<64u), (-Uint128(1))<<64u);
-compare((-(Uint128(12342)<<64u)) + (Uint128(12342)<<64u), Uint128(0));
-compare(Uint128(1534) * Uint128(323412341l) / Uint128(1534), Uint128(323412341l));
-compare(Uint128(65536) * Uint128(65536) * Uint128(65536) * Uint128(65536), Uint128(1)<<64u);
+
+#define COMPARE(x,y)  compare( (x), (y), "compare(" #x ", " #y ")" )
+
+COMPARE(-Uint128(0), Uint128(0u));
+COMPARE(Uint128(9)*Uint128(7), Uint128(63));
+COMPARE((Uint128(9))*(Uint128(7)<<64u), Uint128(63)<<64u);
+COMPARE((Uint128(9)<<64u)*(Uint128(7)), Uint128(63)<<64u);
+COMPARE((Uint128(9)<<32u)*(Uint128(7)<<32u), Uint128(63)<<64u);
+COMPARE((Uint128(9)<<62u)*(Uint128(7)), Uint128(63)<<62u);
+COMPARE((Uint128(9))*(Uint128(7)<<62u), Uint128(63)<<62u);
+COMPARE(-(Uint128(1)<<64u), (-Uint128(1))<<64u);
+COMPARE((-(Uint128(12342)<<64u)) + (Uint128(12342)<<64u), Uint128(0));
+COMPARE(Uint128(1534) * Uint128(323412341l) / Uint128(1534), Uint128(323412341l));
+COMPARE(Uint128(65536l) * Uint128(65536l) * Uint128(65536l) * Uint128(65536l), Uint128(1)<<64u);
+
+#undef COMPARE
+
 ev << "END\n";
 
 %contains: stdout
 BEGIN
-a == b
-a == b
-a == b
-a == b
-a == b
-a == b
-a == b
-a == b
-a == b
-a == b
-a == b
 END
