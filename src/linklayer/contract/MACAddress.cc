@@ -40,12 +40,6 @@ MACAddress::MACAddress(const char *hexstr)
     setAddress(hexstr);
 }
 
-MACAddress& MACAddress::operator=(const MACAddress& other)
-{
-    address = other.address;
-    return *this;
-}
-
 unsigned int MACAddress::getAddressSize() const
 {
     return MAC_ADDRESS_SIZE;
