@@ -27,9 +27,9 @@ package inet.mobility.models;
 simple StationaryMobility extends MobilityBase
 {
     parameters:
-        double initialX @unit(m) = default(uniform(constraintAreaX, constraintAreaX + constraintAreaSizeX)); // start x coordinate
-        double initialY @unit(m) = default(uniform(constraintAreaY, constraintAreaY + constraintAreaSizeY)); // start y coordinate
-        double initialZ @unit(m) = default(uniform(constraintAreaZ, constraintAreaZ + constraintAreaSizeZ)); // start z coordinate
+        double initialX @unit(m) = default(constraintAreaSizeX <= 0 ? constraintAreaX : uniform(constraintAreaX, constraintAreaX + constraintAreaSizeX)); // start x coordinate
+        double initialY @unit(m) = default(constraintAreaSizeY <= 0 ? constraintAreaY : uniform(constraintAreaY, constraintAreaY + constraintAreaSizeY)); // start y coordinate
+        double initialZ @unit(m) = default(constraintAreaSizeZ <= 0 ? constraintAreaZ : uniform(constraintAreaZ, constraintAreaZ + constraintAreaSizeZ)); // start z coordinate
         bool initFromDisplayString = default(true);
         @class(StationaryMobility);
 }

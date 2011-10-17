@@ -42,9 +42,9 @@ package inet.mobility.models;
 simple RandomWPMobility extends MovingMobilityBase
 {
     parameters:
-        double initialX @unit(m) = default(uniform(constraintAreaX, constraintAreaX + constraintAreaSizeX)); // start x coordinate
-        double initialY @unit(m) = default(uniform(constraintAreaY, constraintAreaY + constraintAreaSizeY)); // start y coordinate
-        double initialZ @unit(m) = default(uniform(constraintAreaZ, constraintAreaZ + constraintAreaSizeZ)); // start z coordinate
+        double initialX @unit(m) = default(constraintAreaSizeX <= 0 ? constraintAreaX : uniform(constraintAreaX, constraintAreaX + constraintAreaSizeX)); // start x coordinate
+        double initialY @unit(m) = default(constraintAreaSizeY <= 0 ? constraintAreaY : uniform(constraintAreaY, constraintAreaY + constraintAreaSizeY)); // start y coordinate
+        double initialZ @unit(m) = default(constraintAreaSizeZ <= 0 ? constraintAreaZ : uniform(constraintAreaZ, constraintAreaZ + constraintAreaSizeZ)); // start z coordinate
         bool initFromDisplayString = default(true);
         volatile double speed @unit(mps); // use uniform(minSpeed, maxSpeed) or another distribution
         volatile double waitTime @unit(s); // wait time between reaching a target and choosing a new one
