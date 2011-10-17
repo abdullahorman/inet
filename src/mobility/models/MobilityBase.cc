@@ -84,6 +84,7 @@ void MobilityBase::initialize(int stage)
         initializePosition();
         if (isOutside())
             throw cRuntimeError("node position (%g,%g,%g) is outside the constraint area", lastPosition.x, lastPosition.y, lastPosition.z);
+        emitMobilityStateChangedSignal();
     }
     else if (stage == 3) {
         emitMobilityStateChangedSignal();
