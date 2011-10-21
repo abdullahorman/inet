@@ -13,26 +13,28 @@
 // along with this program.  If not, see http://www.gnu.org/licenses/.
 // 
 
+#include <vector>
+
 #include "PcapTrafficGenerator.h"
 
 #include "InterfaceTableAccess.h"
-#include "IPControlInfo.h"
-#include "IPDatagram.h"
-#include "IPRoute.h"
+#include "IPv4ControlInfo.h"
+#include "IPv4Datagram.h"
+#include "IPv4Route.h"
 #include "RoutingTableAccess.h"
 
 Define_Module(PcapTrafficGenerator);
 
 void PcapTrafficGenerator::initialize()
 {
-    const char* filename = this->par("pcapFile");
-    const char* parserName = this->par("pcapParser");
+    const char* filename = this->par("pcapFile").stringValue();
+    const char* parserName = this->par("pcapParser").stringValue();
     enabled = filename && *filename && parserName && *parserName;
     if (enabled)
     {
-        timeShift = this->par("timeShift");
-        endTime = this->par("endTime");
-        repeatGap = this->par("repeatGap");
+        timeShift = this->par("timeShift").doubleValue();
+        endTime = this->par("endTime").doubleValue();
+        repeatGap = this->par("repeatGap").doubleValue();
 
         ev << getFullPath() << ".PcapTrafficGenerator::initialize(): "
                 <<"file:" << filename
@@ -49,31 +51,29 @@ void PcapTrafficGenerator::initialize()
 
 void PcapTrafficGenerator::handleMessage(cMessage *msg)
 {
-    if (!enabled)
-    {
-        error("disbled PcapTrafficGenerator received a message (module=%s)", getFullPath().c_str());
-    }
-    else if (msg->isSelfMessage())
+    if (!msg->isSelfMessage())
+        throw cRuntimeError("PcapTrafficGenerator received a non-self message (module=%s)", getFullPath().c_str());
+
+    if (enabled)
     {
         if (msg->isPacket())
         {
-            IPDatagram* ipd = dynamic_cast<IPDatagram*>(msg);
+            IPv4Datagram* ipd = dynamic_cast<IPv4Datagram*>(msg);
             if (ipd)
             {
-                IPAddress destAddr = ipd->getDestAddress();
-                IPRoutingDecision *controlInfo = new IPRoutingDecision();
-
+                IPv4Address destAddr = ipd->getDestAddress();
+                IPv4RoutingDecision *controlInfo = new IPv4RoutingDecision();
                 ipd->setControlInfo(controlInfo);
-                ipd->setTransportProtocol(IP_PROT_NONE);
                 send(msg, "out");
                 msg = NULL;
             }
         }
-        delete msg;
-        scheduleNextPacket();
     }
     else
-        error("PcapTrafficGenerator received a non-self message (module=%s)", getFullPath().c_str());
+        EV << "disabled PcapTrafficGenerator received a message (module=" << getFullPath().c_str() << ")\n";
+
+    delete msg;
+    scheduleNextPacket();
 }
 
 void PcapTrafficGenerator::scheduleNextPacket()

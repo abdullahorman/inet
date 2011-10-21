@@ -20,13 +20,8 @@
 
 #include "PcapFile.h"
 
-#include "IPDatagram.h"
-#include "IPSerializer.h"
-
-PcapFileReader::PcapFileReader() :
-    pcap(NULL)
-{
-}
+#include "IPv4Datagram.h"
+#include "IPv4Serializer.h"
 
 PcapFileReader::~PcapFileReader()
 {
@@ -44,7 +39,7 @@ void PcapFileReader::open(const char* filename)
     fgetpos(pcap_file(pcap), &pos0);
 }
 
-const void* PcapFileReader::read(uint32 &sec, uint32 &usec, uint32 &capLen, uint32& origLen)
+const void* PcapFileReader::read(uint32_t &sec, uint32_t &usec, uint32_t &capLen, uint32_t& origLen)
 {
     if (!pcap)
         return NULL;
@@ -81,6 +76,7 @@ void PcapFileReader::close()
     }
 }
 
+#if 0
 PcapFileWriter::PcapFileWriter() :
     pcap(NULL), pcapDumper(NULL)
 {
@@ -123,7 +119,7 @@ void PcapFileWriter::open(const char* filename, unsigned int snaplen)
         throw cRuntimeError("Pcap open dumpfile '%s' error: Invalid snaplen=%d\n", filename, snaplen);
 }
 
-void PcapFileWriter::write(uint32 sec, uint32 usec, const void *buff, uint32 capLen, uint32 fullLen)
+void PcapFileWriter::write(uint32_t sec, uint32_t usec, const void *buff, uint32_t capLen, uint32_t fullLen)
 {
     struct pcap_pkthdr ph;
     ph.ts.tv_sec = sec;
@@ -133,3 +129,5 @@ void PcapFileWriter::write(uint32 sec, uint32 usec, const void *buff, uint32 cap
 
     pcap_dump((unsigned char *)pcapDumper, &ph, (const unsigned char *)buff);
 }
+#endif
+

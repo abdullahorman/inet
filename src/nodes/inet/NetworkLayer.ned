@@ -18,11 +18,12 @@
 
 package inet.nodes.inet;
 
-import inet.networklayer.ipv4.IPv4;
-import inet.networklayer.ipv4.IGMP;
-import inet.networklayer.ipv4.ICMP;
-import inet.networklayer.ipv4.ErrorHandling;
 import inet.networklayer.arp.ARP;
+import inet.networklayer.ipv4.ErrorHandling;
+import inet.networklayer.ipv4.ICMP;
+import inet.networklayer.ipv4.IGMP;
+import inet.networklayer.ipv4.IPv4;
+import inet.util.ITrafficGenerator;
 
 
 //
@@ -35,6 +36,7 @@ module NetworkLayer
     parameters:
         @display("i=block/fork");
         bool proxyARP = default(true);
+        string trafficGeneratorType = default("");  // traffic generator implementation, e.g. PcapTrafficGenerator
     gates:
         input ifIn[] @labels(IPv4Datagram);
         input tcpIn @labels(TCPSegment,IPv4ControlInfo/down);
@@ -61,7 +63,7 @@ module NetworkLayer
             gates:
                 transportIn[8];
                 transportOut[8];
-                queueIn[sizeof(ifIn)];
+                queueIn[sizeof(ifIn) + (trafficGeneratorType != "" ? 1 : 0)];
         }
         arp: ARP {
             parameters:
@@ -81,6 +83,9 @@ module NetworkLayer
         errorHandling: ErrorHandling {
             parameters:
                 @display("p=239,63");
+        }
+        trafgen: <trafficGeneratorType> like ITrafficGenerator if trafficGeneratorType != "" {
+            @display("p=27,45");
         }
 
     connections allowunconnected:
@@ -117,10 +122,11 @@ module NetworkLayer
         ip.queueOut --> arp.ipIn;
 
         for i=0..sizeof(ifIn)-1 {
-            ifIn[i] --> ip.queueIn[i];
+            ifIn[i] --> { @display("m=s"); } --> ip.queueIn[i];
         }
         for i=0..sizeof(ifOut)-1 {
-            arp.nicOut[i] --> ifOut[i];
+            arp.nicOut[i] --> { @display("m=s"); } --> ifOut[i];
         }
+        trafgen.out --> ip.queueIn[sizeof(ifIn)] if trafficGeneratorType != "";
 }
 

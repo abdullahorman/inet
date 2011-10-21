@@ -19,14 +19,11 @@
 
 
 
-package inet.examples.inet.pcapTrafGen;
+package inet.examples.inet.pcaptrafgen;
 
-import inet.examples.ethernet.lans.ethernetline;
-import inet.networklayer.autorouting.FlatNetworkConfigurator;
+import inet.networklayer.autorouting.ipv4.FlatNetworkConfigurator;
 import inet.nodes.inet.Router;
 import inet.nodes.inet.StandardHost;
-import inet.world.ChannelInstaller;
-import inet.world.NAMTrace;
 import ned.DatarateChannel;
 
 
@@ -46,20 +43,21 @@ network PcapTrafGenTest
             datarate = 100Mbps;
         }
     submodules:
-        channelInstaller: ChannelInstaller {
-            parameters:
-                channelClass = "ThruputMeteringChannel";
-                channelAttrs = "format=u";
-                @display("p=98,50");
-        }
+//        channelInstaller: ChannelInstaller {
+//            parameters:
+//                channelClass = "ThruputMeteringChannel";
+//                channelAttrs = "format=u";
+//                @display("p=98,50");
+//        }
         configurator: FlatNetworkConfigurator {
             parameters:
+                networkAddress = "192.168.1.1";
                 @display("p=185,50");
         }
-        nam: NAMTrace {
-            parameters:
-                @display("p=260,50");
-        }
+//        nam: NAMTrace {
+//            parameters:
+//                @display("p=260,50");
+//        }
         cli[n]: StandardHost {
             parameters:
                 @display("i=device/laptop");
@@ -80,11 +78,13 @@ network PcapTrafGenTest
             parameters:
                 @display("p=433,250");
         }
-        generator: TrafGenHost {
+        generator: StandardHost {
             parameters:
+                networkLayer.trafficGeneratorType = "PcapTrafficGenerator";
+                IPForward = true;
                 @display("p=186,152");
         }
-        connections:
+    connections:
         for i=0..n-1 {
             cli[i].pppg++ <--> ethernetline <--> r1.pppg++;
         }

@@ -14,17 +14,20 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with this program; if not, see <http://www.gnu.org/licenses/>.
 //
-package inet.util;
+package inet.util.pcaptrafgen;
+
+import inet.util.ITrafficGenerator;
+
 
 //
 // Traffic generator - use a PCAP file.
 // Uses relative transmit times based on timestamp of first packet. 
 //
-simple PcapTrafficGenerator like TrafficGenerator
+simple PcapTrafficGenerator like ITrafficGenerator
 {
     parameters:
         string pcapFile = default("");
-        string pcapParser = default("IPDatagramPcapParser");
+        string pcapParser = default("IPDatagramPcapEntryParser");
         double timeShift @unit("s") = default(0);   // simtime = pcapRelativeTime + timeshift
         double endTime @unit("s") = default(0);     // simtime of last sent packet, 0 is infinity
         double repeatGap @unit("s") = default(0);   // wait time after last packet, before resend first packet of pcap file, when smaller or equal than 0 then no repeating 
